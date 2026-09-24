@@ -1,0 +1,16 @@
+[flyway]
+# The order is given by the version number (one sequence for the whole repository), not by the folder.
+locations = ["filesystem:01_ddl", "filesystem:02_dml", "filesystem:03_dcl", "filesystem:04_tcl"]
+# The history table lives in the domain schema: nothing of this domain is created in public.
+defaultSchema = "sales"
+schemas = ["sales"]
+validateMigrationNaming = true   # a badly named file fails instead of being ignored
+cleanDisabled = true             # clean drops everything: this repository never needs it
+
+[flyway.placeholders]
+seedDemoData = "false"         # "true" only in develop: loads the demo data
+
+[flyway.postgresql.transactional]
+lock = false                     # lets a migration run CREATE INDEX CONCURRENTLY outside a transaction
+
+# The connection is NOT here: FLYWAY_URL, FLYWAY_USER and FLYWAY_PASSWORD come from the environment.
