@@ -1,0 +1,51 @@
+# Own instance of the sales domain and its migration runner.
+# -infra includes this file; nothing here is shared with another domain (own instance, own volume).
+name: opti-sales-db
+
+services:
+  sales-db:
+    image: postgres:16.9-alpine
+    environment:
+      POSTGRES_DB: ${SALES_DB_NAME:-sales}
+      POSTGRES_USER: ${SALES_DB_USER:-sales_owner}
+      POSTGRES_PASSWORD: ${SALES_DB_PASSWORD:?set SALES_DB_PASSWORD in .env}
+    volumes:
+      - sales-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks:
+      - platform
+    expose:
+      - "5432"
+    restart: unless-stopped
+
+  # Migrating is a deliberate act, not something that happens on every restart: profile "tooling".
+  #   docker compose --env-file .env run --rm sales-db-migrate            (apply what is pending)
+  #   docker compose --env-file .env run --rm sales-db-migrate info       (what is applied, what is missing)
+  sales-db-migrate:
+    image: flyway/flyway:11.20.3
+    profiles: ["tooling"]
+    depends_on:
+      sales-db:
+        condition: service_healthy
+    volumes:
+      - ../:/workspace:ro
+    environment:
+      FLYWAY_URL: jdbc:postgresql://sales-db:5432/${SALES_DB_NAME:-sales}
+      FLYWAY_USER: ${SALES_DB_USER:-sales_owner}
+      FLYWAY_PASSWORD: ${SALES_DB_PASSWORD:?set SALES_DB_PASSWORD in .env}
+      # "true" only in develop (env/.env.develop.example); qa and main never load demo data
+      FLYWAY_PLACEHOLDERS_SEEDDEMODATA: ${SEED_DEMO_DATA:-false}
+    command: ["-workingDirectory=/workspace", "-configFiles=/workspace/flyway.toml", "migrate"]
+    networks:
+      - platform
+
+networks:
+  platform:
+    external: true
+
+volumes:
+  sales-db-data:
