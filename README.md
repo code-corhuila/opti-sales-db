@@ -23,3 +23,11 @@ branch into another: `merge develop -> qa` and `merge qa -> main` do not exist i
 rule.
 
 Full policy: `00-governance/branching-policy.md` in `library-docs`.
+
+## V020: comprobantes privados de pago
+
+Migración aditiva `V020__private_payment_receipts.sql`: `payment_receipt` conserva contenido binario y MIME, vinculado a pago/factura, con límite de 2 MiB y tipos PDF/PNG/JPEG. Otorga SELECT/INSERT solo a `sales_writer`; el lector general de reportes no obtiene acceso. La API exige roles ADMIN/SELLER para descargar; no existe exposición por archivos públicos. Ningún pago histórico se modifica ni requiere backfill.
+
+Aplicar esta migración antes de actualizar la API de ventas. Validación cloud en PostgreSQL 16 aislado: migración desde cero, repetición incremental sin cambios y pruebas JDBC de persistencia/rollback junto al pago. No se ejecutan scripts de rollback ni limpieza en este trabajo. Los comprobantes de prueba deben ser ficticios.
+
+La inversa U020 se entrega para revisión y se niega a borrar una tabla con comprobantes. No se ejecutó. El commit de este PR lleva `[skip ci]`: el workflow existente ejecuta borrados/rollback completos; se evita dispararlo por la restricción explícita de esta tarea. Se comprobaron localmente migraciones e integración sin borrados.
